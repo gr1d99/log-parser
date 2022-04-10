@@ -15,7 +15,7 @@ class LogParser
   def parse
     total_views = parse_visits
     unique_views = parse_unique_visits
-    { total_views: total_views[:views], unique_views: unique_views[:views] }
+    { total_views: total_views, unique_views: unique_views }
   end
 
   private
@@ -52,7 +52,7 @@ class LogParser
         result[:views][page] = 1
       end
     end
-    result
+    transform_total_views result
   end
 
   def parse_unique_visits
@@ -69,13 +69,51 @@ class LogParser
       next if visited && same_ip
 
       if visited_with_different_ip
-        new_count = result[:views][page][:count] += 1
-        result[:views][page] = { count: new_count }
+        new_count = result[:views][page] += 1
+        result[:views][page] = new_count
       else
-        result[:views][page] = { count: 1 }
+        result[:views][page] = 1
       end
       track_ip ip
     end
-    result
+    transform_unique_views(result)
+  end
+
+  def transform_total_views(result)
+    result_to_a = result[:views].to_a.map do |key, value|
+      { page: key.to_s, count: value }
+    end
+
+    sorted_result = result_to_a.sort do |a, b|
+      b[:count] <=> a[:count]
+    end
+
+    sorted_result.map do |visit|
+      page =  visit[:page]
+      count = visit[:count]
+      { "#{page}": "#{count} #{pluralize_visit(count)}" }
+    end
+  end
+
+  def transform_unique_views(result)
+    result_to_a = result[:views].to_a.map do |key, value|
+      { page: key.to_s, count: value }
+    end
+
+    sorted_result = result_to_a.sort do |a, b|
+      b[:count] <=> a[:count]
+    end
+
+    sorted_result.map do |visit|
+      page =  visit[:page]
+      count = visit[:count]
+      { "#{page}": "#{count} Unique #{pluralize_visit(count)}" }
+    end
+  end
+
+  def pluralize_visit(count)
+    return 'Visit' if count === 1
+
+    'Visits'
   end
 end
