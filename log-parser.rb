@@ -1,11 +1,13 @@
 # frozen_string_literal: true
 
 class LogParser
-  attr_accessor :filename, :tracked_ips
+  attr_reader :filename
 
   def initialize(filename)
     @filename = filename
     @tracked_ips = {}
+    @total_visits = {}
+    @unique_visits = {}
   end
 
   def self.call(filename)
@@ -13,24 +15,23 @@ class LogParser
   end
 
   def parse
-    total_views = parse_visits
+    total_views = parse_total_visits
     unique_views = parse_unique_visits
     { total_views: total_views, unique_views: unique_views }
   end
 
   private
 
+  attr_accessor :tracked_ips, :unique_visits, :total_visits
+
   def open_file
-    File.open(File.join(File.expand_path(__dir__), filename))
+    file = File.join(File.expand_path(__dir__), filename)
+    File.open(file)
   end
 
   def visit_parts(visit)
     parts = visit.split(' ')
     { page: parts[0], ip: parts[1] }
-  end
-
-  def visited?(page, result)
-    result[:views].key? page
   end
 
   def track_ip(ip)
@@ -41,53 +42,58 @@ class LogParser
     tracked_ips.key?(ip)
   end
 
-  def parse_visits
-    result = { views: {} }
+  def parse_total_visits
     open_file.readlines.map(&:chomp).each do |visit|
       page = visit_parts(visit)[:page]
-      visited = visited?(page, result)
+      visited = total_visits.key? page
       if visited
-        result[:views][page] += 1
-      else
-        result[:views][page] = 1
+        total_visits[page] += 1
+        next
       end
+
+      total_visits[page] = 1
     end
-    transform_total_views result
+    transform_total_views
   end
 
   def parse_unique_visits
-    result = { views: {} }
     open_file.readlines.map(&:chomp).each do |visit|
       parts = visit_parts(visit)
       ip = parts[:ip]
       page = parts[:page]
 
-      visited = visited?(page, result)
+      visited = unique_visits.key?(page)
       same_ip = visited && ip_tracked?(ip)
       visited_with_different_ip = visited && !same_ip
 
       next if visited && same_ip
 
       if visited_with_different_ip
-        new_count = result[:views][page] += 1
-        result[:views][page] = new_count
+        new_count = unique_visits[page] += 1
+        unique_visits[page] = new_count
       else
-        result[:views][page] = 1
+        unique_visits[page] = 1
       end
       track_ip ip
     end
-    transform_unique_views(result)
+    transform_unique_views
   end
 
-  def transform_total_views(result)
-    result_to_a = result[:views].to_a.map do |key, value|
+  def map_visits_with_page_count(visits)
+    visits.to_a.map do |key, value|
       { page: key.to_s, count: value }
     end
+  end
 
-    sorted_result = result_to_a.sort do |a, b|
+  def sort_visit_count(visits)
+    visits.sort do |a, b|
       b[:count] <=> a[:count]
     end
+  end
 
+  def transform_total_views
+    result_to_a = map_visits_with_page_count(total_visits)
+    sorted_result = sort_visit_count(result_to_a)
     sorted_result.map do |visit|
       page =  visit[:page]
       count = visit[:count]
@@ -95,15 +101,9 @@ class LogParser
     end
   end
 
-  def transform_unique_views(result)
-    result_to_a = result[:views].to_a.map do |key, value|
-      { page: key.to_s, count: value }
-    end
-
-    sorted_result = result_to_a.sort do |a, b|
-      b[:count] <=> a[:count]
-    end
-
+  def transform_unique_views
+    visits_to_a = map_visits_with_page_count(unique_visits)
+    sorted_result = sort_visit_count(visits_to_a)
     sorted_result.map do |visit|
       page =  visit[:page]
       count = visit[:count]

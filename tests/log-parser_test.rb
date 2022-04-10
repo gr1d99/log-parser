@@ -6,14 +6,14 @@ require_relative '../log-parser'
 
 class LogParserTest < MiniTest::Test
   def test_sets_filename_correctly
-    log_file = './tests/webserver.log'
+    log_file = 'tests/webserver.log'
     parser = LogParser.new(log_file)
 
     assert parser.filename.equal?(log_file)
   end
 
   def test_parses_correct_total_views
-    log_file = './tests/webserver.log'
+    log_file = 'tests/webserver.log'
     result = LogParser.call(log_file)
 
     total_views = result[:total_views]
@@ -24,7 +24,7 @@ class LogParserTest < MiniTest::Test
   end
 
   def test_parses_correct_unique_views
-    log_file = './tests/webserver.log'
+    log_file = 'tests/webserver.log'
     result = LogParser.call(log_file)
 
     unique_views = result[:unique_views]
@@ -35,7 +35,7 @@ class LogParserTest < MiniTest::Test
   end
 
   def test_assert_sorts_total_views_starting_with_most_views
-    log_file = './tests/webserver.log'
+    log_file = 'tests/webserver.log'
     result = LogParser.call(log_file)
     total_views = result[:total_views]
 
@@ -45,7 +45,7 @@ class LogParserTest < MiniTest::Test
   end
 
   def test_assert_sorts_unique_views_starting_with_most_views
-    log_file = './tests/webserver.log'
+    log_file = 'tests/webserver.log'
     result = LogParser.call(log_file)
 
     unique_views = result[:unique_views]
