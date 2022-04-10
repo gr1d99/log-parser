@@ -1,22 +1,28 @@
 # frozen_string_literal: true
 
-class LogParser
-  attr_reader :filename
+require_relative 'log_parser/cli'
 
-  def initialize(filename)
+class LogParser
+  include CLI
+  attr_reader :filename, :verbose
+
+  def initialize(filename, verbose)
+    @verbose = verbose
     @filename = filename
     @tracked_ips = {}
     @total_visits = {}
     @unique_visits = {}
   end
 
-  def self.call(filename)
-    new(filename).parse
+  def self.call(filename, verbose: false)
+    new(filename, verbose).parse
   end
 
   def parse
     total_views = parse_total_visits
     unique_views = parse_unique_visits
+    return output_to_cli(total_views: total_views, unique_views: unique_views) if verbose
+
     { total_views: total_views, unique_views: unique_views }
   end
 
@@ -27,6 +33,8 @@ class LogParser
   def open_file
     file = File.join(File.expand_path(__dir__), filename)
     File.open(file)
+  rescue Errno::ENOENT => e
+    raise Error, e.message
   end
 
   def visit_parts(visit)
@@ -116,4 +124,15 @@ class LogParser
 
     'Visits'
   end
+
+  class Error < StandardError; end
+end
+
+if $PROGRAM_NAME == __FILE__
+  raise LogParser::Error, 'You must provide log file as the first argument' if ARGV.length.zero?
+
+  filename = ARGV.first
+  verbose = !ARGV.last.nil?
+
+  LogParser.call(filename, verbose: verbose)
 end

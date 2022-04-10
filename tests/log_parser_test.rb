@@ -1,13 +1,15 @@
+#!/usr/bin/env ruby
+
 # frozen_string_literal: true
 
 require 'minitest/autorun'
 
-require_relative '../log-parser'
+require_relative '../log_parser'
 
 class LogParserTest < MiniTest::Test
   def test_sets_filename_correctly
     log_file = 'tests/webserver.log'
-    parser = LogParser.new(log_file)
+    parser = LogParser.new(log_file, true)
 
     assert parser.filename.equal?(log_file)
   end
@@ -53,5 +55,11 @@ class LogParserTest < MiniTest::Test
     assert_equal(unique_views[0], { "/help_page/1": '2 Unique Visits' })
     assert_equal(unique_views[1], { "/home": '2 Unique Visits' })
     assert_equal(unique_views[2], { "/contact": '1 Unique Visit' })
+  end
+
+  def test_it_error_when_file_does_not_exist
+    log_file = 'tests/webserver.logs'
+
+    assert_raises(LogParser::Error) { LogParser.call(log_file) }
   end
 end
